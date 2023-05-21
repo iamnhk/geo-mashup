@@ -1,0 +1,51 @@
+body {
+	font-family: Verdana, Geneva, Arial, Helvetica, sans-serif;
+	font-size: small;
+	background:#CCCCCC;
+}
+
+#content {
+	min-width: 975px;
+	width: 975px;
+	margin: auto; 
+	padding: 2em;
+}
+
+#map_canvas { 
+	width: 100%;
+	height: 500px;
+}
+
+#map {
+	width: 100%;
+	height: 500px;
+	border: 1px solid #000;
+}
+
+#input {}
+
+.gradient {
+	background:#fff;
+	background: -webkit-gradient(linear, left top, left bottom, from(#fff), to(#eaeaea));
+	background: -moz-linear-gradient(top, #fff, #eaeaea);
+	filter: progid:DXImageTransform.Microsoft.gradient(startColorstr=#ffffff, endColorstr=#eaeaea);
+	-ms-filter: "progid:DXImageTransform.Microsoft.gradient(startColorstr=#ffffff, endColorstr=#eaeaea)";
+}
+
+.gradient1 {
+	background:#EEEEEE;
+	background: -webkit-gradient(linear, left top, left bottom, from(#F4F4F4), to(#D2D2D2));
+	background: -moz-linear-gradient(top, #F4F4F4, #D2D2D2);
+	filter: progid:DXImageTransform.Microsoft.gradient(startColorstr=#ffffff, endColorstr=#eaeaea);
+	-ms-filter: "progid:DXImageTransform.Microsoft.gradient(startColorstr=#ffffff, endColorstr=#eaeaea)";
+}
+
+.shadow-all { 
+	-moz-box-shadow: 10px 10px 5px #888;
+	-webkit-box-shadow: 10px 10px 5px #888;
+	box-shadow: 10px 10px 5px #888;
+	
+}
+
+.item { padding:1em; margin:0 0 2em; }
+

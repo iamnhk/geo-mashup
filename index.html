@@ -1,0 +1,384 @@
+<html>
+<head>
+<!-- Sensoria käytetään käyttäjän sijainnin haisteluun -->
+<!-- <script src="http://maps.google.com/maps?file=api&amp;v=3&amp;sensor=true&amp;key=ABQIAAAAxQ2p82PQpm_McnSh_XwzthTXG1rrScZ7LMn4X5hKWX-PwIrgmxSIPM6jLTATGs-UdWYyVfNQmWOigA" type="text/javascript"></script>-->
+<script type="text/javascript"
+        src="http://maps.googleapis.com/maps/api/js?sensor=false"></script>
+<script src="http://code.jquery.com/jquery-latest.js"></script>
+<link rel="stylesheet" type="text/css" href="style.css" /> 
+
+<script type="text/javascript">
+
+
+var map;
+var markerArray = [];
+var Path = [];
+// The structure of inputMessageList[] is following:
+// [lat, lng, tweet_text, "twitter", tweet_id, tweet_from_user, tweet_from_user_id, hours_ago]);
+var inputMessageList = [];
+
+var center = [40.713452,-74.005537]; // New York, tämä on oletus
+
+var radius = "8km";
+var current_page = 0;
+var twitter_query_word = "and";
+
+
+	    
+function setCenter(lat, lng) {
+    
+    removeMarkers();
+    if(Path.length != 0){
+	removePath();
+    }
+    
+    current_page = 0;
+    center = [lat, lng];
+    map.setCenter(new google.maps.LatLng(center[0], center[1]));
+    
+    for (var i=0; i<inputMessageList.length; i++) {
+	inputMessageList[i] == null;
+    }
+    
+    $('#debug_div').html("");
+    inputMessageList.length = 0;
+    
+    get_twitter();
+    
+}
+
+function setCenterHere() {
+    
+    var lat = map.getBounds().getCenter().lat();
+    var lng = map.getBounds().getCenter().lng();
+
+    // $('#input').html(""+lat+", "+lng);
+    
+    setCenter(lat, lng);
+    
+}
+
+function setQuery(form) {
+    var query = form.inputbox.value;
+    twitter_query_word = query;
+    setCenterHere();
+    
+}
+
+function removePath(){
+	
+	//for (var i=0; i<Path.length; i++) {
+	//Path.removeAt(i);
+    //}
+	
+	Path.setMap(null);
+	Path.length = 0;
+}
+
+
+function showUserPath(){
+	
+	
+	//current_page = 0;
+	
+	//$('#debug_div').html("");
+    //inputMessageList.length = 0;
+	
+	//get_twitter();
+	
+	var pathcoordinates = [];
+	
+	//alert (inputMessageList[0][0]+":"+inputMessageList[0][1]);
+	
+	//lets build the pathcoordinates array
+	for (var i=0; i<inputMessageList.length; i++) {
+	pathcoordinates.push(new google.maps.LatLng(inputMessageList[i][0],inputMessageList[i][1]));
+    }
+
+	//sort with from:user inputMessageList[i][5]
+	
+	
+	Path = new google.maps.Polyline({
+		path: pathcoordinates,
+		strokeColor: "#0000FF",
+		strokeOpacity: 1.0,
+		strokeWeight: 2
+	    });
+	
+	Path.setMap(map);
+	
+}
+
+
+
+function initialize() {
+						 
+    var myOptions = {
+	zoom: 13,
+	center: new google.maps.LatLng(center[0],center[1]),
+     	mapTypeId: google.maps.MapTypeId.ROADMAP
+    }
+    map = new google.maps.Map(document.getElementById("map_canvas"),myOptions);
+    //lets add trafic layer to map
+    
+    var trafficLayer = new google.maps.TrafficLayer();
+    trafficLayer.setMap(map);
+    
+    //message input parsed to following array formatt to be added here.....
+    
+    get_twitter();
+    Path = [];
+
+    
+}
+
+
+function showMarkers() {
+    removeMarkers();
+    //lets add markers to map
+    for (var i=0; i<inputMessageList.length; i++) {
+	AddMarker(inputMessageList[i],i);
+    }
+    
+}
+
+function showMarker(tweet_id) {
+    removeMarkers();
+    for (var i=0; i<inputMessageList.length; i++) {
+	if(inputMessageList[i][4] == tweet_id) {
+	    AddMarker(inputMessageList[i],0);
+	}
+	
+    }
+
+
+}
+
+function AddMarker(input,num){
+    var image;
+    switch(input[3])
+	{
+	case 'twitter':
+	    image = 'twitter-logo.png';
+	    break;
+	case 'facebook':
+	    image = 'facebook-logo.png';
+	    break;
+	default:
+	    image = 'twitter-logo.png';
+	}
+     
+    var messageLatLng =  new google.maps.LatLng(input[0],input[1]);
+    var marker = new google.maps.Marker({
+	    position : messageLatLng,
+	    map: map,
+	    icon: image
+	});
+	
+	markerArray[num] = marker;
+	
+    //lets add info window to marker (here the tweet or message is displayed)
+    var infowindow = new google.maps.InfoWindow(
+						{ content: '<p>"'+
+						  input[2]+
+						  '"</p><br><p>'+
+						  'Tweeted '+input[7]+
+						  ' hours ago by '+input[5]+'.',
+						  size: new google.maps.Size(50,50)
+						});
+    
+    google.maps.event.addListener(marker,'click',function() {
+	    infowindow.open(map,marker);
+	});
+}
+
+function removeMarkers(){
+    
+    if (markerArray){
+	for (i in markerArray){
+	    markerArray[i].setMap(null);
+	}
+	markerArray.length = 0;
+    }
+}
+
+
+
+function get_twitter() {
+    current_page++;
+    var twitter_api_url = 'http://search.twitter.com/search.json';
+    
+    var twitter_query = '&page='+current_page+'&q='+twitter_query_word+'&rpp=100&geocode='+center[0]+','+center[1]+','+radius;
+    
+    twitterdata(twitter_api_url, twitter_query);
+    
+    
+    //while(inputMessageList.length < 20) {
+    //    if(semaphore == 1){
+    //	    semaphore--;
+    //	    var twitter_query = '&page='+ current_page++ +'&q=and&rpp=10&geocode='+center[0]+','+center[1]+','+radius;
+    //twitterdata(twitter_api_url, twitter_query);
+    //	    
+    //	    $('#debug_div').append('Fooooobaaar:');
+    //	}
+    
+}
+
+
+function twitterdata(api_url, query){
+    $('#input').html("");
+    $(document).ready(function() {
+	    $.ajaxSetup({ cache: true });
+	    
+	    // Send JSON request
+	    $.getJSON(
+		      api_url + '?callback=?' + query,
+		      function(data) {
+			  $.each(data.results, function(i, tweet) {
+				  if(tweet.text !== undefined) {
+				      // Calculate how many hours ago was the tweet posted
+				      var date_tweet = new Date(tweet.created_at);
+				      var date_now = new Date();
+				      var date_diff = date_now - date_tweet;
+				      var hours = Math.round(date_diff/(1000*60*60));
+				      var lat = 0;
+				      var lng = 0;
+							      
+				      if(tweet.geo != null) {
+					  lat = tweet.geo.coordinates.toString().split(",")[0];
+					  lng = tweet.geo.coordinates.toString().split(",")[1];
+
+				      }
+				      else if(tweet.location != "") {
+					  
+					  var location = tweet.location;
+					  var re = new RegExp(/-?[0-9]*[.][0-9]+/g);
+					  
+					  var coords = tweet.location.match(re);
+					  
+					  if(coords != null && coords.length==2){
+					      
+					      lat = parseFloat(coords[0]);
+					      lng = parseFloat(coords[1]);
+					  }
+					  // These tweets have a location, but at times it's very approximate.
+					  // Therefore these are not pushed to the inputMessageList[]
+					  
+					  //$('#debug_div').append(location.toString());
+				      }
+				      
+				      if(lat != 0 && lng != 0) {
+					  var duplicate = 0;
+					  for(i in inputMessageList){
+					      if(inputMessageList[i][4]==tweet.id)
+						  duplicate = 1;
+					  }
+					  if (duplicate == 0)
+					      inputMessageList.push([lat, lng, tweet.text, "twitter", tweet.id, tweet.from_user, tweet.from_user_id, hours]);
+				      }
+				      
+				      // This only displays the extracted tweets on the page.
+				      var tweet_html = '<strong>'+tweet.text+'</strong><br>';
+				      tweet_html += 'Tweeted '+hours+' hours ago by <i>'+tweet.from_user;
+				      tweet_html += '</i> at ['+lat+', '+lng+']';
+				      tweet_html += ' (location: '+location+')';
+				      if(lat != 0 && lng != 0){
+					  tweet_html += ' <a href="#" onClick="showMarker('+tweet.id+')">show marker</a>';
+				      }
+				      tweet_html += '<br><br>';
+				      $('#debug_div').append(tweet_html);
+				  }
+			      });
+			  //			  semaphore++;
+		      });
+	});
+}
+
+
+function inputs() {
+    $('#input').html("");
+    var output = "";
+    for (i = 0; i < inputMessageList.length; i++) {
+        output = "Entry "+i+":<br><ul>";
+        for (j = 0; j < inputMessageList[i].length; j++) {
+            output += "<li>"+inputMessageList[i][j].toString()+"</li>";
+        }
+        output += "</ul><br>";
+        $('#input').append(output);
+    }
+    
+}
+
+
+</script>
+</head>
+
+<!-- 
+<body onload="initialize()">
+  <div id="content">	
+    <div style="color:#555;font-size:16px; font-weight:bold; padding:5px"> GeoMashUp with Facebook Twitter and Trafic Congestion Data		
+    </div>	
+    <div class="item gradient shadow-all">
+      <div id="map_canvas"></div>
+    </div>
+    
+    <div class=" item gradient shadow-all" style="margin:5px;padding:5px 5px 5px 10px;">
+      
+      <input type="button" value="More older tweets" onclick="get_twitter(); return false;"/>
+      
+      <input type="button" value="showMarkers()" onclick="showMarkers(); return false;" />
+      <input type="button" value="Helsinki" onclick="setCenter(60.171008, 24.941336); return false;" />
+      <input type="button" value="New York" onclick="setCenter(40.713452,-74.005537); return false;" />
+      
+      <input type="button" value="Show inputs" onclick="inputs(); return false;" />		</div>
+    
+  </div>
+  
+--> 
+
+<body onload="initialize()">
+  <div id="content">
+    
+
+    <div class="item gradient shadow-all">
+      <div style="color:#555;font-size:20px; font-weight:bold; padding:5px">GeoMashUp with Twitter and Traffic Congestion Data</div>
+    </div>
+    
+    <div class="item gradient shadow-all" style="height:500px;">
+      <div id="map_canvas"></div>
+    </div>
+    
+    <div class="item gradient shadow-all">
+      <form name="myform" action="" method="GET">
+	<input type="button" name="button" value="Change query" onClick="setQuery(this.form)">
+	<input type="text" name="inputbox" value="and">
+      </form>
+      
+
+      <input type="button" value="More older tweets" onClick="get_twitter(); return false;"/>
+      
+      <input type="button" value="Show markers" onClick="showMarkers(); return false;" />
+      <input type="button" value="Helsinki" onClick="setCenter(60.171008, 24.941336); return false;" />
+      <input type="button" value="New York" onClick="setCenter(40.713452,-74.005537); return false;" />
+      
+      <input type="button" value="Show inputs" onClick="inputs(); return false;" />
+      <input type="button" value="Show route" onClick="showUserPath(); return false;" />
+
+<!--      <input type="button" value="Show inputs" onClick="inputs(); return false;" /> -->
+      
+      <input type="button" value="Center here" onClick="setCenterHere(); return false;" />
+
+    
+
+    </div>
+    
+    <div class="item gradient shadow-all">
+      <div id="debug_div"></div>
+    </div>
+
+    <div id="input"></div>
+    
+</body>
+
+
+</html>
